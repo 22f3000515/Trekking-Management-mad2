@@ -1,12 +1,13 @@
-from flask import Blueprint, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
+from models import User, Trek, Booking
+from extensions import db
 
 user_bp = Blueprint(
-    "user",
-    __name__,
+    "user",__name__,
     url_prefix="/api/user"
 )
-# User Profile Route
+### 1. User Profile Route
 @user_bp.route("/profile", methods=["GET"])
 @jwt_required()
 def profile():
@@ -19,15 +20,245 @@ def profile():
         "role": claims["role"]
     }), 200
 
-# User Dashboard Route
+
+### 2.User Dashboard Route
 @user_bp.route("/dashboard", methods=["GET"])
 @jwt_required()
-def user_dashboard():
-   claims = get_jwt()
+def dashboard():
 
-   if claims["role"] != "user":
+    claims = get_jwt()
+
+    if claims["role"] != "user":
         return jsonify({"message": "Access Denied"}), 403
 
-   return jsonify({
-        "message": "Welcome User Dashboard"
+    user_id = int(get_jwt_identity())
+
+    user = User.query.get(user_id)
+
+    return jsonify({
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+        "active": user.active
     }), 200
+
+
+### 3.View Available Treks
+@user_bp.route("/treks", methods=["GET"])
+@jwt_required()
+def view_treks():
+
+    claims = get_jwt()
+
+    if claims["role"] != "user":
+        return jsonify({"message": "Access Denied"}), 403
+
+    treks = Trek.query.filter_by(status="Open" ).all()
+    # Prepare the result list
+    result = []
+
+    for trek in treks:
+        result.append({
+            "id": trek.id,
+            "name": trek.name,
+            "location": trek.location,
+            "difficulty": trek.difficulty,
+            "duration": trek.duration,
+            "price": trek.price,
+            "available_slots": trek.available_slots,
+            "start_date": trek.start_date,
+            "end_date": trek.end_date,
+            "status": trek.status
+        })
+
+    return jsonify(result), 200    
+
+
+### 4.Book Trek
+@user_bp.route("/book/<int:trek_id>", methods=["POST"])
+@jwt_required()
+def book_trek(trek_id):
+
+    claims = get_jwt()
+
+    if claims["role"] != "user":
+        return jsonify({"message": "Access Denied"}), 403
+
+    user_id = int(get_jwt_identity())
+
+    trek = Trek.query.get(trek_id)
+
+    if not trek:
+        return jsonify({"message": "Trek not found"}), 404
+
+    if trek.status != "Open":
+        return jsonify({
+            "message": "Booking allowed only for Open treks"
+        }), 400
+    
+    # Check if there are available slots
+    if trek.available_slots <= 0:
+        return jsonify({
+            "message": "No slots available"
+        }), 400
+    
+    # Check if the user has already booked this trek
+    existing_booking = Booking.query.filter_by(
+        user_id=user_id,
+        trek_id=trek_id
+    ).first()
+
+    if existing_booking:
+        return jsonify({
+            "message": "You have already booked this trek"
+        }), 409
+    # Create a new booking
+    booking = Booking(
+        user_id=user_id,
+        trek_id=trek_id,
+        status="Booked"
+    )
+    db.session.add(booking)
+
+    # Decrease the available slots of the trek
+    trek.available_slots -= 1
+    db.session.commit()
+
+    return jsonify({
+        "message": "Trek booked successfully"
+    }), 201
+
+
+### 5.Update User Profile
+@user_bp.route("/profile", methods=["PUT"])
+@jwt_required()
+def update_profile():
+
+    claims = get_jwt()
+
+    if claims["role"] != "user":
+        return jsonify({"message": "Access Denied"}), 403
+
+    user_id = int(get_jwt_identity())
+
+    # Get the user from the database
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    data = request.get_json()
+
+    name = data.get("name")
+    email = data.get("email")
+
+    # Update the user's profile
+    if name:
+        user.name = name
+
+    if email:
+        existing_user = User.query.filter(
+            User.email == email,
+            User.id != user_id
+        ).first()
+
+        if existing_user:
+            return jsonify({
+                "message": "Email already exists"
+            }), 409
+
+        user.email = email
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Profile updated successfully",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email
+        }
+    }), 200
+
+
+### 6.Search and Filter Treks
+@user_bp.route("/search", methods=["GET"])
+@jwt_required()
+def search_treks():
+
+    claims = get_jwt()
+
+    if claims["role"] != "user":
+        return jsonify({"message": "Access Denied"}), 403
+
+    query = Trek.query.filter(Trek.status == "Open")
+
+    location = request.args.get("location")
+    difficulty = request.args.get("difficulty")
+    duration = request.args.get("duration")
+    name = request.args.get("name")
+
+    # Apply filters based on query parameters
+    if name:
+        query = query.filter(Trek.name.ilike(f"%{name}%"))
+    if location:
+        query = query.filter(Trek.location.ilike(f"%{location}%"))
+
+    if difficulty:
+        query = query.filter(Trek.difficulty == difficulty)
+
+    if duration:
+        try:
+          query = query.filter(Trek.duration == int(duration))
+        except ValueError:
+          return jsonify({"message": "Invalid duration"}), 400
+    # Get the filtered treks
+    treks = query.all() 
+
+    result = []
+
+    for trek in treks:
+        result.append({
+            "id": trek.id,
+            "name": trek.name,
+            "location": trek.location,
+            "difficulty": trek.difficulty,
+            "duration": trek.duration,
+            "price": trek.price,
+            "available_slots": trek.available_slots,
+            "status": trek.status
+        })
+
+    return jsonify(result), 200
+
+### 7. My Booking History
+@user_bp.route("/bookings", methods=["GET"])
+@jwt_required()
+def booking_history():
+
+    claims = get_jwt()
+
+    if claims["role"] != "user":
+        return jsonify({"message": "Access Denied"}), 403
+
+    user_id = int(get_jwt_identity())
+
+    bookings = Booking.query.filter_by(user_id=user_id).all()
+
+    result = []
+    
+    for booking in bookings:
+        result.append({
+            "booking_id": booking.id,
+            "trek_name": booking.trek.name,
+            "location": booking.trek.location,
+            "difficulty": booking.trek.difficulty,
+            "booking_date": booking.booking_date,
+            "booking_status": booking.status,
+            "trek_status": booking.trek.status,
+            "start_date": booking.trek.start_date,
+            "end_date": booking.trek.end_date
+        })
+
+    return jsonify(result), 200

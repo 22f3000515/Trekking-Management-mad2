@@ -2,7 +2,11 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from models import Trek, Booking
 from extensions import db
-staff_bp = Blueprint("staff", __name__)
+staff_bp = Blueprint(
+    "staff",
+    __name__,
+    url_prefix="/api/staff"
+)
 
 ### 1. Staff dashboard routes
 @staff_bp.route("/dashboard", methods=["GET"])
