@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt
 from models import User, Trek, Booking
-from extensions import db
+from extensions import db, cache
 from datetime import datetime
 
 ### 1. Admin dashboard route
@@ -176,6 +176,7 @@ def create_trek():
 
         db.session.add(new_trek)
         db.session.commit()     
+        cache.clear()
 
     ## Return Response
         return jsonify({
@@ -267,6 +268,7 @@ def update_trek(trek_id):
         ).date()
 
     db.session.commit()
+    cache.clear()
 
     return jsonify({
         "message": "Trek updated successfully"
@@ -294,6 +296,7 @@ def delete_trek(trek_id):
 
     db.session.delete(trek) # delete trek
     db.session.commit()
+    cache.clear()
     return jsonify({
         "message": "Trek deleted successfully"
     }), 200

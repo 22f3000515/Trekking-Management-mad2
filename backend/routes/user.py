@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from models import User, Trek, Booking
-from extensions import db
+from extensions import db, cache
 
 user_bp = Blueprint(
     "user",__name__,
@@ -44,9 +44,10 @@ def dashboard():
     }), 200
 
 
-### 3.View Available Treks
+### View Available Treks
 @user_bp.route("/treks", methods=["GET"])
 @jwt_required()
+@cache.cached(timeout=300)
 def view_treks():
 
     claims = get_jwt()
@@ -54,7 +55,8 @@ def view_treks():
     if claims["role"] != "user":
         return jsonify({"message": "Access Denied"}), 403
 
-    treks = Trek.query.filter_by(status="Open" ).all()
+    treks = Trek.query.filter_by(status="Open").all()
+
     # Prepare the result list
     result = []
 
@@ -72,8 +74,7 @@ def view_treks():
             "status": trek.status
         })
 
-    return jsonify(result), 200    
-
+    return jsonify(result), 200
 
 ### 4.Book Trek
 @user_bp.route("/book/<int:trek_id>", methods=["POST"])

@@ -1,11 +1,17 @@
 from flask import Flask
 from routes import auth_bp, admin_bp, staff_bp, user_bp
 from config import Config
-from extensions import db, jwt, mail
+from extensions import db, jwt, mail,cache
 
 app = Flask(__name__)
 
 app.config.from_object(Config)
+
+cache.init_app(app, config={
+    "CACHE_TYPE": "RedisCache",
+    "CACHE_REDIS_URL": "redis://localhost:6379/0",
+    "CACHE_DEFAULT_TIMEOUT": 300
+})
 
 db.init_app(app) # Initialize SQLAlchemy with the app
 jwt.init_app(app) # Initialize Flask-JWT-Extended with the app
