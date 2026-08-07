@@ -136,6 +136,15 @@ def update_trek_status(trek_id):
     # Update the trek status
     trek.status = status
 
+    # When trek is completed, complete all active bookings
+    if status == "Completed":
+        bookings = Booking.query.filter_by(
+        trek_id=trek.id
+    ).all()
+
+        for booking in bookings:
+           if booking.status == "Booked":
+              booking.status = "Completed"
     db.session.commit()
 
     return jsonify({

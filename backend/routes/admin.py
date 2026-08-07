@@ -236,9 +236,24 @@ def update_trek(trek_id):
     trek.available_slots = data.get("available_slots", trek.available_slots)
     trek.total_slots = data.get("total_slots", trek.total_slots)
     trek.price = data.get("price", trek.price)
-    trek.status = data.get("status", trek.status)
+    status = data.get("status")
 
-    # Date update
+    if status is not None:
+        valid_status = [
+          "Pending",
+          "Approved",
+          "Open",
+          "Closed",
+          "Completed"
+       ]
+
+        if status not in valid_status:
+           return jsonify({
+            "message": "Invalid trek status"
+        }), 400
+
+        trek.status = status
+        # Date update
     if data.get("start_date"):
         trek.start_date = datetime.strptime(
             data["start_date"],
@@ -246,12 +261,16 @@ def update_trek(trek_id):
         ).date()
 
     if data.get("end_date"):
-        trek.end_date = datetime.strptime( data["end_date"], "%Y-%m-%d").date()
+        trek.end_date = datetime.strptime(
+            data["end_date"],
+            "%Y-%m-%d"
+        ).date()
 
     db.session.commit()
+
     return jsonify({
         "message": "Trek updated successfully"
-    }), 200   
+    }), 200    
 
 
 ### 8.Delete Trek Route

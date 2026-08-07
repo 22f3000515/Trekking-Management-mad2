@@ -104,9 +104,10 @@ def book_trek(trek_id):
         }), 400
     
     # Check if the user has already booked this trek
-    existing_booking = Booking.query.filter_by(
-        user_id=user_id,
-        trek_id=trek_id
+    existing_booking = Booking.query.filter(
+     Booking.user_id == user_id,
+     Booking.trek_id == trek_id,
+     Booking.status != "Cancelled"
     ).first()
 
     if existing_booking:
@@ -262,3 +263,50 @@ def booking_history():
         })
 
     return jsonify(result), 200
+
+
+### 8. Cancel Booking
+@user_bp.route("/bookings/<int:booking_id>/cancel", methods=["PUT"])
+@jwt_required()
+def cancel_booking(booking_id):
+
+    claims = get_jwt()
+
+    if claims["role"] != "user":
+        return jsonify({"message": "Access Denied"}), 403
+
+    user_id = int(get_jwt_identity())
+
+    # Get the booking from the database
+    booking = Booking.query.filter_by(
+        id=booking_id,
+        user_id=user_id
+    ).first()
+
+    if not booking:
+        return jsonify({
+            "message": "Booking not found"
+        }), 404
+
+    if booking.status == "Cancelled":
+        return jsonify({
+            "message": "Booking already cancelled"
+        }), 400
+
+    if booking.status == "Completed":
+        return jsonify({
+            "message": "Completed booking cannot be cancelled"
+        }), 400
+
+    booking.status = "Cancelled"
+    # Increase the available slots of the trek
+    booking.trek.available_slots += 1
+
+    db.session.commit()
+    # Return the updated booking details 
+    return jsonify({
+        "message": "Booking cancelled successfully",
+        "booking_id": booking.id,
+        "booking_status": booking.status,
+        "available_slots": booking.trek.available_slots
+    }), 200    
