@@ -264,8 +264,28 @@ def booking_history():
 
     return jsonify(result), 200
 
+### 8. Export Booking History
+@user_bp.route("/bookings/export", methods=["POST"])
+@jwt_required()
+def export_booking_history():
 
-### 8. Cancel Booking
+    claims = get_jwt()
+
+    if claims["role"] != "user":
+        return jsonify({"message": "Access Denied"}), 403
+
+    user_id = int(get_jwt_identity())
+
+    from celery_app import export_booking_history_task
+
+    task = export_booking_history_task.delay(user_id)
+
+    return jsonify({
+        "message": "CSV export started successfully",
+        "task_id": task.id
+    }), 202
+
+### 9. Cancel Booking
 @user_bp.route("/bookings/<int:booking_id>/cancel", methods=["PUT"])
 @jwt_required()
 def cancel_booking(booking_id):
