@@ -97,6 +97,9 @@ def monthly_trekking_report():
 
     from app import app
     from reports import generate_monthly_report
+    from models import User
+    from flask_mail import Message
+    from extensions import mail
 
     with app.app_context():
 
@@ -104,6 +107,22 @@ def monthly_trekking_report():
 
         with open("monthly_trekking_report.html", "w", encoding="utf-8") as file:
             file.write(html_report)
+
+        admin = User.query.filter_by(role="admin").first()
+
+        if admin and admin.email:
+
+            msg = Message(
+                subject="TrekOra - Monthly Trekking Activity Report",
+                sender=app.config["MAIL_USERNAME"],
+                recipients=[admin.email]
+            )
+
+            msg.html = html_report
+
+            mail.send(msg)
+
+            print(f"Monthly report emailed to admin -> {admin.email}")
 
         print("Monthly trekking activity report generated successfully.")
 

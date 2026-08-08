@@ -489,14 +489,6 @@
             Closed
           </option>
 
-          <option value="Started">
-            Started
-          </option>
-
-          <option value="Ongoing">
-            Ongoing
-          </option>
-
           <option value="Completed">
             Completed
           </option>
@@ -1245,12 +1237,6 @@ export default {
 
         case "Closed":
           return "bg-secondary";
-
-        case "Started":
-          return "bg-primary";
-
-        case "Ongoing":
-          return "bg-warning text-dark";
 
         case "Completed":
           return "bg-dark";

@@ -1425,7 +1425,7 @@ const deleteTrek = async (id) => {
 
 // ================= ASSIGN STAFF =================
 
-const openAssignStaff = (trek) => {
+const openAssignStaff = async (trek) => {
 
   selectedTrek.value = trek
 
@@ -1433,6 +1433,8 @@ const openAssignStaff = (trek) => {
     trek.assigned_staff_id || ""
 
   showAssignForm.value = true
+
+  await loadStaff()
 
 }
 

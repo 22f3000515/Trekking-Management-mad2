@@ -126,6 +126,7 @@ def book_trek(trek_id):
     # Decrease the available slots of the trek
     trek.available_slots -= 1
     db.session.commit()
+    cache.clear()
 
     return jsonify({
         "message": "Trek booked successfully"
@@ -329,10 +330,11 @@ def cancel_booking(booking_id):
     booking.trek.available_slots += 1
 
     db.session.commit()
+    cache.clear()
     # Return the updated booking details 
     return jsonify({
         "message": "Booking cancelled successfully",
         "booking_id": booking.id,
         "booking_status": booking.status,
         "available_slots": booking.trek.available_slots
-    }), 200    
+    }), 200

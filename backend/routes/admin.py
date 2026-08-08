@@ -334,6 +334,7 @@ def assign_staff(trek_id):
     # Assign staff to trek
     trek.assigned_staff_id = staff.id
     db.session.commit()
+    cache.clear()
     return jsonify({
         "message": "Staff assigned successfully",
         "trek_id": trek.id,

@@ -6,7 +6,7 @@ from flask_jwt_extended import (
 )
 
 from models import Trek, Booking
-from extensions import db
+from extensions import db, cache
 
 
 staff_bp = Blueprint(
@@ -33,10 +33,18 @@ def staff_dashboard():
 
     staff_id = int(get_jwt_identity())
 
+    print("JWT ID:", get_jwt_identity())
+    print("STAFF ID:", staff_id)
+
     # Get only treks assigned to this staff member
     treks = Trek.query.filter_by(
         assigned_staff_id=staff_id
     ).all()
+
+    print("ASSIGNED TREKS:", [
+    (trek.id, trek.name, trek.assigned_staff_id)
+    for trek in treks
+    ])
 
     dashboard = []
 
@@ -202,8 +210,6 @@ def update_trek_status(trek_id):
     valid_status = [
         "Open",
         "Closed",
-        "Started",
-        "Ongoing",
         "Completed"
     ]
 
@@ -370,11 +376,22 @@ def update_participant_status(booking_id):
             "message": "Invalid booking status"
         }), 400
 
+    old_status = booking.status
+
     booking.status = status
+
+    # If staff is cancelling a previously-booked participant,
+    # free up the slot on the trek (same as when a user self-cancels).
+    if status == "Cancelled" and old_status != "Cancelled":
+        booking.trek.available_slots += 1
 
     db.session.commit()
 
+    if status == "Cancelled" and old_status != "Cancelled":
+        cache.clear()
+
     return jsonify({
         "message": "Participant status updated successfully",
-        "booking_status": booking.status
+        "booking_status": booking.status,
+        "available_slots": booking.trek.available_slots
     }), 200
