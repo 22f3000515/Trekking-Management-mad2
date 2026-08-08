@@ -251,17 +251,22 @@ def booking_history():
     result = []
     
     for booking in bookings:
-        result.append({
-            "booking_id": booking.id,
-            "trek_name": booking.trek.name,
-            "location": booking.trek.location,
-            "difficulty": booking.trek.difficulty,
-            "booking_date": booking.booking_date,
-            "booking_status": booking.status,
-            "trek_status": booking.trek.status,
-            "start_date": booking.trek.start_date,
-            "end_date": booking.trek.end_date
-        })
+       result.append({
+        "booking_id": booking.id,
+        "trek_name": booking.trek.name,
+        "location": booking.trek.location,
+        "difficulty": booking.trek.difficulty,
+        "duration": booking.trek.duration, 
+        "price": booking.trek.price,
+          "trek_status": booking.trek.status,
+        "available_slots": booking.trek.available_slots,
+        "total_slots": booking.trek.total_slots,
+        "booking_date": booking.booking_date,
+        "booking_status": booking.status,
+        "payment_status": booking.payment_status,
+       "start_date": booking.trek.start_date,
+       "end_date": booking.trek.end_date
+})
 
     return jsonify(result), 200
 
