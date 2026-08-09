@@ -147,8 +147,11 @@ def export_booking_history_task(user_id):
 
         filename = f"booking_history_user_{user_id}.csv"
 
+        export_dir = os.path.join(app.root_path, "exports")
+        os.makedirs(export_dir, exist_ok=True)
+
         filepath = os.path.join(
-            app.root_path,
+            export_dir,
             filename
         )
 
@@ -163,6 +166,7 @@ def export_booking_history_task(user_id):
 
             writer.writerow([
                 "Booking ID",
+                "User ID",
                 "Trek Name",
                 "Location",
                 "Difficulty",
@@ -177,6 +181,7 @@ def export_booking_history_task(user_id):
 
                 writer.writerow([
                     booking.id,
+                    booking.user_id,
                     booking.trek.name,
                     booking.trek.location,
                     booking.trek.difficulty,

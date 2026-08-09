@@ -21,12 +21,18 @@ def generate_monthly_report():
     total_treks = len(conducted_treks)
 
     # Total participants
+    # NOTE: a trek being "Completed" does not retroactively flip every
+    # booking's own status to "Completed" (that cascade only runs through
+    # the staff "mark trek completed" endpoint). A booking that is still
+    # "Booked" is still a real participant of that conducted trek, so we
+    # count every non-cancelled booking, not just ones literally marked
+    # "Completed".
     total_participants = 0
 
     for trek in conducted_treks:
-        total_participants += Booking.query.filter_by(
-            trek_id=trek.id,
-            status="Completed"
+        total_participants += Booking.query.filter(
+            Booking.trek_id == trek.id,
+            Booking.status != "Cancelled"
         ).count()
 
     # Popular treks
@@ -34,9 +40,9 @@ def generate_monthly_report():
 
     for trek in conducted_treks:
 
-        participant_count = Booking.query.filter_by(
-            trek_id=trek.id,
-            status="Completed"
+        participant_count = Booking.query.filter(
+            Booking.trek_id == trek.id,
+            Booking.status != "Cancelled"
         ).count()
 
         popular_treks.append({

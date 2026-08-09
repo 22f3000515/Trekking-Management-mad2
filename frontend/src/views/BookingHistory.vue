@@ -555,11 +555,87 @@ const cancelBooking = async (
 // EXPORT BOOKING HISTORY
 
 
+// Poll the export task's status every 2s until it's done (or fails),
+// then alert the user and download the finished CSV.
+const pollExportStatus = (taskId) => {
+
+  const intervalId = setInterval(async () => {
+
+    try {
+
+      const statusRes = await api.get(
+        `/user/bookings/export/status/${taskId}`
+      )
+
+      const state = statusRes.data.state
+
+      if (state === "SUCCESS") {
+
+        clearInterval(intervalId)
+        exporting.value = false
+
+        exportMessage.value =
+          "Your booking history CSV is ready! Check your inbox, downloading now..."
+
+        // Alert once the batch job is actually done
+        window.alert(
+          "Your trekking history CSV export is ready and downloading."
+        )
+
+        // Fetch the file as a blob (auth header is required, so we
+        // can't just window.open the download URL) and save it.
+        const fileRes = await api.get(
+          statusRes.data.download_url,
+          { responseType: "blob" }
+        )
+
+        const blobUrl = window.URL.createObjectURL(
+          new Blob([fileRes.data])
+        )
+
+        const link = document.createElement("a")
+        link.href = blobUrl
+        link.setAttribute(
+          "download",
+          statusRes.data.filename || "booking_history.csv"
+        )
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        window.URL.revokeObjectURL(blobUrl)
+
+      } else if (state === "FAILURE") {
+
+        clearInterval(intervalId)
+        exporting.value = false
+
+        exportMessage.value =
+          "Export failed: " + (statusRes.data.error || "Unknown error")
+
+      }
+      // else: still PENDING/STARTED, keep polling
+
+    } catch (err) {
+
+      clearInterval(intervalId)
+      exporting.value = false
+
+      console.error("Export status check error:", err)
+
+      exportMessage.value = "Failed to check export status."
+
+    }
+
+  }, 2000)
+
+}
+
+
 const exportBookings = async () => {
 
   exporting.value = true
 
-  exportMessage.value = ""
+  exportMessage.value = "Export started, preparing your CSV..."
 
   try {
 
@@ -573,10 +649,9 @@ const exportBookings = async () => {
       response.data
     )
 
-
-    exportMessage.value =
-      response.data.message ||
-      "Booking history export started successfully."
+    // Kick off polling so the user gets a real "done" alert instead of
+    // just the "started" message.
+    pollExportStatus(response.data.task_id)
 
   }
 
@@ -593,11 +668,6 @@ const exportBookings = async () => {
       err.response?.data?.message ||
       "Failed to export booking history."
 
-  }
-
-
-  finally {
-
     exporting.value = false
 
   }
@@ -613,7 +683,6 @@ const goDashboard = () => {
   )
 
 }
-
 
 const logout = () => {
 

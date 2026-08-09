@@ -42,6 +42,74 @@
       </div>
 
 
+      <!-- Search & Filter -->
+      <div class="card p-3 mb-4 shadow-sm">
+
+        <div class="row g-2">
+
+          <div class="col-md-3">
+            <input
+              v-model="filters.name"
+              type="text"
+              class="form-control"
+              placeholder="Search by trek name"
+              @keyup.enter="searchTreks"
+            />
+          </div>
+
+          <div class="col-md-3">
+            <input
+              v-model="filters.location"
+              type="text"
+              class="form-control"
+              placeholder="Location"
+              @keyup.enter="searchTreks"
+            />
+          </div>
+
+          <div class="col-md-2">
+            <select
+              v-model="filters.difficulty"
+              class="form-select"
+            >
+              <option value="">Any Difficulty</option>
+              <option value="Easy">Easy</option>
+              <option value="Moderate">Moderate</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+
+          <div class="col-md-2">
+            <input
+              v-model="filters.duration"
+              type="number"
+              min="1"
+              class="form-control"
+              placeholder="Duration (days)"
+              @keyup.enter="searchTreks"
+            />
+          </div>
+
+          <div class="col-md-2 d-flex gap-2">
+            <button
+              class="btn btn-primary w-100"
+              @click="searchTreks"
+            >
+              Search
+            </button>
+            <button
+              class="btn btn-outline-secondary"
+              @click="clearFilters"
+            >
+              Clear
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+
       <!-- Error -->
       <div
         v-if="error"
@@ -85,7 +153,7 @@
               </h5>
 
               <p class="text-muted mb-2">
-                📍 {{ trek.location }}
+                {{ trek.location }}
               </p>
 
               <p class="mb-1">
@@ -167,6 +235,13 @@ const treks = ref([])
 const loading = ref(false)
 const error = ref("")
 
+const filters = ref({
+  name: "",
+  location: "",
+  difficulty: "",
+  duration: ""
+})
+
 
 const user = JSON.parse(
   localStorage.getItem("user") || "{}"
@@ -175,7 +250,7 @@ const user = JSON.parse(
 const userName = user.name || "User"
 
 
-// Fetch available treks
+// Fetch available treks (no filters)
 const fetchTreks = async () => {
   loading.value = true
   error.value = ""
@@ -197,6 +272,52 @@ const fetchTreks = async () => {
     loading.value = false
   }
 }
+
+
+// Search / filter treks using the backend's /user/search route
+const searchTreks = async () => {
+
+  loading.value = true
+  error.value = ""
+
+  try {
+
+    // Only send params that are actually filled in, so an empty
+    // field doesn't accidentally filter results down to nothing.
+    const params = {}
+    if (filters.value.name) params.name = filters.value.name
+    if (filters.value.location) params.location = filters.value.location
+    if (filters.value.difficulty) params.difficulty = filters.value.difficulty
+    if (filters.value.duration) params.duration = filters.value.duration
+
+    const response = await api.get("/user/search", { params })
+    console.log("Search results:", response.data)
+    treks.value = response.data
+
+  } catch (err) {
+
+    console.error("Error searching treks:", err)
+    error.value =
+      err.response?.data?.message ||
+      "Failed to search treks."
+
+  } finally {
+    loading.value = false
+  }
+}
+
+
+// Reset filters and reload the full list
+const clearFilters = () => {
+  filters.value = {
+    name: "",
+    location: "",
+    difficulty: "",
+    duration: ""
+  }
+  fetchTreks()
+}
+
 
 
 // Booking button

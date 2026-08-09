@@ -54,7 +54,12 @@ def login():
 
     if not user.check_password(password):
        return jsonify({"message": "Invalid email or password"}), 401
-    
+
+    if not user.active:
+       return jsonify({
+           "message": "Your account has been deactivated. Please contact the admin."
+       }), 403
+
     #making jwt token
     access_token = create_access_token(
     identity=str(user.id),

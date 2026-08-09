@@ -27,6 +27,16 @@ db.init_app(app)
 jwt.init_app(app)
 mail.init_app(app)
 
+
+@jwt.token_in_blocklist_loader
+def check_if_user_is_active(jwt_header, jwt_payload):
+    from models import User
+
+    user_id = jwt_payload.get("sub")
+    user = User.query.get(int(user_id)) if user_id else None
+
+    return user is None or not user.active
+
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(staff_bp)

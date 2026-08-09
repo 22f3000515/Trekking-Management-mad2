@@ -254,6 +254,17 @@ def update_trek(trek_id):
         }), 400
 
         trek.status = status
+
+        # Keep bookings in sync: if the trek is being marked Completed
+        # from the admin side, flip any still-"Booked" bookings to
+        # "Completed" too (mirrors the same cascade in staff.py's
+        # trek-status route, so reports/history are correct regardless
+        # of which role closed the trek out).
+        if status == "Completed":
+            bookings = Booking.query.filter_by(trek_id=trek.id).all()
+            for booking in bookings:
+                if booking.status == "Booked":
+                    booking.status = "Completed"
         # Date update
     if data.get("start_date"):
         trek.start_date = datetime.strptime(

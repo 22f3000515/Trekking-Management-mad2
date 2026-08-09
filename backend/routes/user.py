@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify, request
+import os
+from flask import Blueprint, jsonify, request, send_from_directory, current_app
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from models import User, Trek, Booking
 from extensions import db, cache
@@ -44,7 +45,7 @@ def dashboard():
     }), 200
 
 
-### View Available Treks
+### 3.View Available Treks
 @user_bp.route("/treks", methods=["GET"])
 @jwt_required()
 @cache.cached(timeout=300)
@@ -230,6 +231,8 @@ def search_treks():
             "duration": trek.duration,
             "price": trek.price,
             "available_slots": trek.available_slots,
+            "start_date": trek.start_date,
+            "end_date": trek.end_date,
             "status": trek.status
         })
 
@@ -291,6 +294,44 @@ def export_booking_history():
         "message": "CSV export started successfully",
         "task_id": task.id
     }), 202
+
+
+### 8b. Check Export Task Status
+@user_bp.route("/bookings/export/status/<task_id>", methods=["GET"])
+@jwt_required()
+def export_booking_status(task_id):
+
+    from celery_app import celery
+
+    task = celery.AsyncResult(task_id)
+
+    response = {
+        "task_id": task_id,
+        "state": task.state
+    }
+
+    if task.state == "SUCCESS":
+        # export_booking_history_task returns the CSV filename
+        response["filename"] = task.result
+        response["download_url"] = f"/api/user/bookings/export/download/{task.result}"
+    elif task.state == "FAILURE":
+        response["error"] = str(task.result)
+
+    return jsonify(response), 200
+
+
+### 8c. Download Exported CSV
+@user_bp.route("/bookings/export/download/<path:filename>", methods=["GET"])
+@jwt_required()
+def download_booking_export(filename):
+
+    export_dir = os.path.join(current_app.root_path, "exports")
+
+    return send_from_directory(
+        export_dir,
+        filename,
+        as_attachment=True
+    )
 
 ### 9. Cancel Booking
 @user_bp.route("/bookings/<int:booking_id>/cancel", methods=["PUT"])

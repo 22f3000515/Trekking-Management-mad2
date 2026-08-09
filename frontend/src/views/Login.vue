@@ -11,6 +11,9 @@
           <p class="text-center text-muted mb-4">
             Trekking Management System
           </p>
+          <p class="text-center text-muted fst-italic mb-4">
+            Every trail tells a story. Start yours with TrekOra.
+          </p>
 
           <!-- Error Message -->
           <div v-if="error" class="alert alert-danger">
